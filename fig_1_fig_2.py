@@ -260,23 +260,21 @@ class HOMOTrainer:
             loss += loss_m1
         # M2: Second order loss
         if use_m2:
-            _, a_true = self.compute_targets(x0, x1, t_np, 2*d)
-            v_pred = self.u1(x_t, t, 2*d_tensor)
-            a_pred = self.u2(x_t, t, 2*d_tensor, vel=v_pred)
-            loss_m2 = torch.sum((a_pred - a_true)**2) / batch_size
-            loss += 0.5 * loss_m2
+            v_true, a_true = self.compute_targets(x0, x1, t_np, d)
+            a_pred = self.u2(x_t, t, d_tensor, vel=v_true)
+            loss_m2 = ((a_pred - a_true) ** 2).mean()
+            loss += loss_m2
         # SC: Self-consistency loss
         if use_sc and d >= 1/128:
             with torch.no_grad():
                 s_t = self.u1(x_t, t, d_tensor)
                 a_t = self.u2(x_t, t, d_tensor, vel=s_t)
-                x_t_plus_d = x_t + d_tensor * s_t + (d_tensor**2 / 2) * a_t
+                x_t_plus_d = x_t + d_tensor * s_t + 0.5 * (d_tensor ** 2) * a_t
                 s_t_plus_d = self.u1(x_t_plus_d, t + d_tensor, d_tensor)
-                v_target = (s_t + s_t_plus_d) / 2
-            
-            v_pred = self.u1(x_t, t, 2*d_tensor)  # MUST require grad
-            loss_sc = torch.sum((v_pred - v_target.detach())**2) / batch_size
-            loss += 0.5 * loss_sc
+                v_target = 0.5 * (s_t + s_t_plus_d)
+            v_pred = self.u1(x_t, t, 2 * d_tensor)
+            loss_sc = 0.5*((v_pred - v_target.detach()) ** 2).mean()
+            loss += loss_sc
         
         loss.backward()
         # torch.nn.utils.clip_grad_norm_(self.u1.parameters(), max_norm=1.0)
@@ -384,16 +382,17 @@ def plot_figure_1(datasets, save_dir='results/figure1'):
         }
         
         trainer = HOMOTrainer(x0_data, x1_data, src_labels, tgt_labels, config)
-        T = config['steps']
-        train_with_sequence(
-            trainer,
-            T_m1=T,
-            T_m2=T,
-            T_sc=T,
-            use_m1=config['use_m1'],
-            use_m2=config['use_m2'],
-            use_sc=config['use_sc']
-        )
+        trainer.train(config['steps'])
+        # T = config['steps']
+        # train_with_sequence(
+        #     trainer,
+        #     T_m1=T,
+        #     T_m2=T,
+        #     T_sc=T,
+        #     use_m1=config['use_m1'],
+        #     use_m2=config['use_m2'],
+        #     use_sc=config['use_sc']
+        # )
         
         generated = trainer.sample(n_samples=800)
         
