@@ -310,7 +310,7 @@ def compute_distances(generated, target, target_labels=None):
 def plot_figure_1(datasets, save_dir='results/figure1'):
     os.makedirs(save_dir, exist_ok=True)
     
-    dataset_name = 'eight_mode'
+    dataset_name = 'five_mode'
     ds = datasets[dataset_name]
     x0_data, src_labels = ds['source']
     x1_data, tgt_labels = ds['target']
@@ -329,25 +329,61 @@ def plot_figure_1(datasets, save_dir='results/figure1'):
     plt.close()
     print(f"Saved: {save_dir}/00_original.png")
     
+    # Eight mode
+    # configs = [
+    #     ('M1', {'steps': 1000, 'batch_size': 400, 'use_m1': True, 'use_m2': False, 'use_sc': False}),
+    #     ('M2', {'steps': 100, 'batch_size': 400, 'use_m1': False, 'use_m2': True, 'use_sc': False}),
+    #     ('SC', {'steps': 10, 'batch_size': 400, 'use_m1': False, 'use_m2': False, 'use_sc': True}),
+    #     ('M1+M2', {'steps': 1000, 'batch_size': 400, 'use_m1': True, 'use_m2': True, 'use_sc': False}),
+    #     ('M1+SC', {'steps': 1000, 'batch_size': 400, 'use_m1': True, 'use_m2': False, 'use_sc': True}),
+    #     ('M2+SC', {'steps': 50, 'batch_size': 400, 'use_m1': False, 'use_m2': True, 'use_sc': True}),
+    #     ('M1+M2+SC', {'steps': 500, 'batch_size': 400, 'use_m1': True, 'use_m2': True, 'use_sc': True}),
+    # ]
+    # # Four mode
+    # configs = [
+    #     ('M1', {'steps': 1000, 'batch_size': 200, 'use_m1': True, 'use_m2': False, 'use_sc': False}),
+    #     ('M2', {'steps': 500, 'batch_size': 200, 'use_m1': False, 'use_m2': True, 'use_sc': False}),
+    #     ('SC', {'steps': 10, 'batch_size': 200, 'use_m1': False, 'use_m2': False, 'use_sc': True}),
+    #     ('M1+M2', {'steps': 1000, 'batch_size': 200, 'use_m1': True, 'use_m2': True, 'use_sc': False}),
+    #     ('M1+SC', {'steps': 1000, 'batch_size': 200, 'use_m1': True, 'use_m2': False, 'use_sc': True}),
+    #     ('M2+SC', {'steps': 50, 'batch_size': 200, 'use_m1': False, 'use_m2': True, 'use_sc': True}),
+    #     ('M1+M2+SC', {'steps': 500, 'batch_size': 200, 'use_m1': True, 'use_m2': True, 'use_sc': True}),
+    # ]
+    # Five mode
     configs = [
-        ('M1', {'steps': 1000, 'batch_size': 400, 'use_m1': True, 'use_m2': False, 'use_sc': False}),
-        ('M2', {'steps': 100, 'batch_size': 400, 'use_m1': False, 'use_m2': True, 'use_sc': False}),
-        ('SC', {'steps': 10, 'batch_size': 400, 'use_m1': False, 'use_m2': False, 'use_sc': True}),
-        ('M1+M2', {'steps': 1000, 'batch_size': 400, 'use_m1': True, 'use_m2': True, 'use_sc': False}),
-        ('M1+SC', {'steps': 1000, 'batch_size': 400, 'use_m1': True, 'use_m2': False, 'use_sc': True}),
-        ('M2+SC', {'steps': 50, 'batch_size': 400, 'use_m1': False, 'use_m2': True, 'use_sc': True}),
-        ('M1+M2+SC', {'steps': 500, 'batch_size': 400, 'use_m1': True, 'use_m2': True, 'use_sc': True}),
+        ('M1', {'steps': 1000, 'batch_size': 300, 'use_m1': True, 'use_m2': False, 'use_sc': False}),
+        ('M2', {'steps': 500, 'batch_size': 300, 'use_m1': False, 'use_m2': True, 'use_sc': False}),
+        ('SC', {'steps': 10, 'batch_size': 300, 'use_m1': False, 'use_m2': False, 'use_sc': True}),
+        ('M1+M2', {'steps': 1000, 'batch_size': 300, 'use_m1': True, 'use_m2': True, 'use_sc': False}),
+        ('M1+SC', {'steps': 1000, 'batch_size': 300, 'use_m1': True, 'use_m2': False, 'use_sc': True}),
+        ('M2+SC', {'steps': 50, 'batch_size': 300, 'use_m1': False, 'use_m2': True, 'use_sc': True}),
+        ('M1+M2+SC', {'steps': 500, 'batch_size': 300, 'use_m1': True, 'use_m2': True, 'use_sc': True}),
     ]
-    
+
     metrics_file = open(f'{save_dir}/metrics.csv', 'w')
     metrics_file.write("Config,Euclidean,Wasserstein,Coverage%\n")
     
     for idx, (name, config_dict) in enumerate(configs, start=1):
         print(f"\nTraining {name}...")
+        # Eight mode
+        # config = {
+        #     'hidden_dim': 200,
+        #     'n_layers': 3,
+        #     'lr': 0.0001,
+        #     **config_dict
+        # }
+        # # Four mode
+        # config = {
+        #     'hidden_dim': 100,
+        #     'n_layers': 2,
+        #     'lr': 0.0001,
+        #     **config_dict
+        # }
+        # Five mode
         config = {
             'hidden_dim': 200,
-            'n_layers': 3,
-            'lr': 0.0001,
+            'n_layers': 2,
+            'lr': 0.0005,
             **config_dict
         }
         
