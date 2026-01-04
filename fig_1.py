@@ -82,6 +82,9 @@ class GaussianMixtureDataset:
         return np.concatenate(samples), np.concatenate(labels)
 
 def create_datasets():
+    np.random.seed(42)
+    torch.manual_seed(42)
+    
     datasets = {}
     four_mode_ds = GaussianMixtureDataset(4, distance_source=5, distance_target=14, samples_per_mode=200)
     datasets['four_mode'] = {
@@ -198,33 +201,48 @@ class HOMOTrainer:
         t = torch.tensor(t_np, device=device)
         d_tensor = torch.tensor(d, device=device)
         
-        loss = torch.tensor(0.0, device=device)
+        losses = []
+        
+        v_pred = None
         
         if use_m1:
             v_true, _ = self.compute_targets(x0, x1, t_np, 2*d)
             v_pred = self.u1(x_t, t, 2*d_tensor)
             loss_m1 = torch.sum((v_pred - v_true)**2) / batch_size
-            loss += loss_m1
+            losses.append(loss_m1)
+        
         if use_m2:
             v_true, a_true = self.compute_targets(x0, x1, t_np, d)
-            a_pred = self.u2(x_t, t, d_tensor, vel=v_true)
+            # If M1 wasn't used, compute v_pred for M2
+            if v_pred is None:
+                v_pred = self.u1(x_t, t, 2*d_tensor)
+            a_pred = self.u2(x_t, t, d_tensor, vel=v_pred)
             loss_m2 = ((a_pred - a_true) ** 2).mean()
-            loss += loss_m2
+            losses.append(loss_m2)
+        
         if use_sc and d >= 1/128:
+            # Compute target WITHOUT gradients (for stability)
             with torch.no_grad():
                 s_t = self.u1(x_t, t, d_tensor)
                 a_t = self.u2(x_t, t, d_tensor, vel=s_t)
                 x_t_plus_d = x_t + d_tensor * s_t + 0.5 * (d_tensor ** 2) * a_t
                 s_t_plus_d = self.u1(x_t_plus_d, t + d_tensor, d_tensor)
                 v_target = 0.5 * (s_t + s_t_plus_d)
-            v_pred = self.u1(x_t, t, 2 * d_tensor)
-            loss_sc = ((v_pred - v_target.detach()) ** 2).mean()
-            loss += loss_sc
+            
+            # Compute prediction WITH gradients
+            v_pred_sc = self.u1(x_t, t, 2 * d_tensor)
+            loss_sc = ((v_pred_sc - v_target) ** 2).mean()
+            losses.append(loss_sc)
         
-        loss.backward()
-        self.optimizer.step()
+        # Sum all losses - this creates a proper computation graph
+        total_loss = sum(losses) if losses else torch.tensor(0.0, device=device)
         
-        return loss.item()
+        # Backward only if we have actual losses
+        if losses:
+            total_loss.backward()
+            self.optimizer.step()
+        
+        return total_loss.item()
     
     def train(self, n_steps):
         config = self.config
@@ -322,7 +340,7 @@ def plot_figure_1(datasets, save_dir='results/figure1'):
     ax.set_ylim(-20, 20)
     ax.set_aspect('equal')
     ax.legend()
-    ax.set_title('Eight-mode Dataset')
+    ax.set_title('Five-mode Dataset')
     ax.grid(True, alpha=0.5)
     plt.tight_layout()
     plt.savefig(f'{save_dir}/00_original.png', dpi=300, bbox_inches='tight')
@@ -351,19 +369,23 @@ def plot_figure_1(datasets, save_dir='results/figure1'):
     # ]
     # Five mode
     configs = [
-        ('M1', {'steps': 1000, 'batch_size': 300, 'use_m1': True, 'use_m2': False, 'use_sc': False}),
-        ('M2', {'steps': 500, 'batch_size': 300, 'use_m1': False, 'use_m2': True, 'use_sc': False}),
-        ('SC', {'steps': 10, 'batch_size': 300, 'use_m1': False, 'use_m2': False, 'use_sc': True}),
+        # ('M1', {'steps': 1000, 'batch_size': 300, 'use_m1': True, 'use_m2': False, 'use_sc': False}),
+        # ('M2', {'steps': 500, 'batch_size': 300, 'use_m1': False, 'use_m2': True, 'use_sc': False}),
+        # ('SC', {'steps': 10, 'batch_size': 300, 'use_m1': False, 'use_m2': False, 'use_sc': True}),
         ('M1+M2', {'steps': 1000, 'batch_size': 300, 'use_m1': True, 'use_m2': True, 'use_sc': False}),
-        ('M1+SC', {'steps': 1000, 'batch_size': 300, 'use_m1': True, 'use_m2': False, 'use_sc': True}),
-        ('M2+SC', {'steps': 50, 'batch_size': 300, 'use_m1': False, 'use_m2': True, 'use_sc': True}),
-        ('M1+M2+SC', {'steps': 500, 'batch_size': 300, 'use_m1': True, 'use_m2': True, 'use_sc': True}),
+        # ('M1+SC', {'steps': 1000, 'batch_size': 300, 'use_m1': True, 'use_m2': False, 'use_sc': True}),
+        # ('M2+SC', {'steps': 50, 'batch_size': 300, 'use_m1': False, 'use_m2': True, 'use_sc': True}),
+        # ('M1+M2+SC', {'steps': 500, 'batch_size': 300, 'use_m1': True, 'use_m2': True, 'use_sc': True}),
     ]
 
     metrics_file = open(f'{save_dir}/metrics.csv', 'w')
     metrics_file.write("Config,Euclidean,Wasserstein,Coverage%\n")
     
     for idx, (name, config_dict) in enumerate(configs, start=1):
+        config_seed = hash(name) % (2**32)
+        np.random.seed(config_seed)
+        torch.manual_seed(config_seed)
+        
         print(f"\nTraining {name}...")
         # Eight mode
         # config = {
