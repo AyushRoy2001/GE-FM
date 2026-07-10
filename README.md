@@ -30,7 +30,7 @@ pip install -r requirements.txt
 ```
 
 ## Usage
-Please run the bash scripts to get the reuslts.
+Please run the bash scripts to get the results.
 ```
 bash run_[X].sh
 (X = FM to run flow matching for all the curved synthetic datasets,
