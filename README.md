@@ -46,5 +46,9 @@ bash run_[X].sh
 
 # Citation
 ```bibtex
-
+@article{royge,
+  title={GE-FM: Geometry-aware Energy-based Flow Matching for Non Euclidean Manifolds},
+  author={Roy, Ayush and Kaushik, Arjun Ramesh and Lokhande, Vishnu Suresh and Ratha, Nalini K and Govindaraju, Venu},
+  journal={Transactions on Machine Learning Research}
+}
 ```
